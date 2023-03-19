@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { ImageBackground, Image, StyleSheet, Text, View, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
-
+import { getAuth, signInAnonymously } from "firebase/auth";
 //navigation prop is passed to every component included in the Stack.Navigator, and contains a set of methods used to navigate to other screens
+
+const signInUser = () => {
+    signInAnonymously(auth)
+        .then(result => {
+            navigation.navigate("Messages", { userID: result.user.uid });
+            Alert.alert("Signed in Successfully!");
+        })
+        .catch((error) => {
+            Alert.alert("Unable to sign in, try later again.");
+        })
+}
 
 const backgroundColors = {
     black: { backgroundColor: '#090C08' },
@@ -66,7 +77,8 @@ const Start = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={styles.button}
-                            onPress={() => navigation.navigate('Chat', { name: name, color: color })}>
+                            //onPress={() => navigation.navigate('Chat', { name: name , color: color , })}>
+                            onPress={() => signInUser('Chat', { name: name, color: color, })}>
                             <Text style={styles.buttonText}>Start Chatting</Text>
                         </TouchableOpacity>
                     </View>

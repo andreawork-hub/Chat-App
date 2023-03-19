@@ -1,5 +1,6 @@
 //import gifted chat library
 import { GiftedChat, Bubble } from "react-native-gifted-chat";
+import { collection, getDocs, addDoc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, } from 'react-native';
 
@@ -7,12 +8,37 @@ const Chat = ({ route, navigation }) => {
     const { name, color, } = route.params;
     const [messages, setMessages] = useState([]);
 
+    const fetchMessages = async () => {
+        const messagesDocuments = await getDocs(collection(db, "messages"));
+        let newMessages = [];
+        messagesDocuments.forEach(docObject => {
+            newMessages.push({ id: docObject.id, ...docObject.data() })
+        });
+        setMessages(newMessages)
+    }
+
+    useEffect(() => {
+        fetchMessages();
+    }, [`${messages}`]);
+
     /**
      * 
      * @param {previousMessage} newMessages 
      */
-    const onSend = (newMessages) => {
+    /*const onSend = (newMessages) => {
         setMessages(previousMessages => GiftedChat.append(previousMessages, newMessages))
+   } \*/
+    const onSend = (newMessages) => {
+        addDoc(collection(db, "messages"), newMessages[0])
+    }
+
+    const addMessages = async (newMesages) => {
+        const newMessagesRef = await addDoc(collection(db, "messages"), newMessages);
+        if (newMessagesRef.id) {
+            Alert.alert(`The list "${messagesName}" has been added.`);
+        } else {
+            Alert.alert("Unable to add. Please try later");
+        }
     }
     const renderBubble = (props) => {
         return <Bubble
@@ -27,9 +53,26 @@ const Chat = ({ route, navigation }) => {
             }}
         />
     }
+
+
     // called only once, passing an empty array 
     useEffect(() => {
         navigation.setOptions({ title: name });
+        const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+        const unsubMessages = onSnapshot(q, (docs) => {
+            let newMessages = [];
+            docs.forEach(doc => {
+                newMessages.push({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: new Date(doc.data().createdAt.toMillis())
+                })
+            })
+            setMessages(newMessages);
+        })
+        return () => {
+            if (unsubMessages) unsubMessages();
+        }
     }, []);
 
     // set the state with a static message
