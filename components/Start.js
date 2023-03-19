@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ImageBackground, Image, StyleSheet, Text, View, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { ImageBackground, Image, StyleSheet, Text, View, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { getAuth, signInAnonymously } from "firebase/auth";
 //navigation prop is passed to every component included in the Stack.Navigator, and contains a set of methods used to navigate to other screens
-
+const auth = getAuth();
 const signInUser = () => {
     signInAnonymously(auth)
         .then(result => {

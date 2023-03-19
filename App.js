@@ -39,15 +39,11 @@ const App = () => {
         ></Stack.Screen>
         <Stack.Screen
           name="Chat"
-          component={Chat}>
-            
-         
+        >
+          {props => <Chat db={db} {...props} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   )
 }
 export default App; 
-
-
-//    {props => <Messages db={db} {...props} />}
