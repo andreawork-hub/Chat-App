@@ -2,17 +2,8 @@ import { useState } from 'react';
 import { ImageBackground, Image, StyleSheet, Text, View, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { getAuth, signInAnonymously } from "firebase/auth";
 //navigation prop is passed to every component included in the Stack.Navigator, and contains a set of methods used to navigate to other screens
-const auth = getAuth();
-const signInUser = () => {
-    signInAnonymously(auth)
-        .then(result => {
-            navigation.navigate("Messages", { userID: result.user.uid });
-            Alert.alert("Signed in Successfully!");
-        })
-        .catch((error) => {
-            Alert.alert("Unable to sign in, try later again.");
-        })
-}
+
+
 
 const backgroundColors = {
     black: { backgroundColor: '#090C08' },
@@ -24,7 +15,18 @@ const backgroundColors = {
 const Start = ({ navigation }) => {
     const [name, setName] = useState('');
     const [color, setColor] = useState('');
+    const auth = getAuth();
 
+    const signInUser = () => {
+        signInAnonymously(auth)
+            .then(result => {
+                navigation.navigate('Chat', { userID: result.user.uid });
+                Alert.alert("Signed in Successfully!");
+            })
+            .catch((error) => {
+                Alert.alert("Unable to sign in, try later again." + error.message.toString());
+            })
+    }
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container} >
@@ -77,8 +79,9 @@ const Start = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={styles.button}
-                            //onPress={() => navigation.navigate('Chat', { name: name , color: color , })}>
-                            onPress={() => signInUser('Chat', { name: name, color: color, })}>
+                            //onPress={() => navigation.navigate('Chat', { name: name, color: color, })}>
+                            //onPress={() => signInUser('Chat', { name: name, color: color, })}>
+                            onPress={signInUser}>
                             <Text style={styles.buttonText}>Start Chatting</Text>
                         </TouchableOpacity>
                     </View>

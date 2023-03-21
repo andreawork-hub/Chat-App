@@ -1,45 +1,24 @@
-//import gifted chat library
+//import gifted Messages library
 import { GiftedChat, Bubble } from "react-native-gifted-chat";
-import { collection, getDocs, addDoc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, } from 'react-native';
+import { StyleSheet, View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { collection, getDocs, addDoc, onSnapshot, query, where, orderBy } from "firebase/firestore";
 
-const Chat = ({ route, navigation }) => {
-    const { name, color, } = route.params;
+const Chat = ({ route, db, navigation }) => {
+    const { name, color, userID } = route.params;
     const [messages, setMessages] = useState([]);
-
-    const fetchMessages = async () => {
-        const messagesDocuments = await getDocs(collection(db, "messages"));
-        let newMessages = [];
-        messagesDocuments.forEach(docObject => {
-            newMessages.push({ id: docObject.id, ...docObject.data() })
-        });
-        setMessages(newMessages)
-    }
-
-    useEffect(() => {
-        fetchMessages();
-    }, [`${messages}`]);
+    const [messageName, setMessageName] = useState("");
+    const [item1, setItem1] = useState("");
+    const [item2, setItem2] = useState("");
 
     /**
      * 
      * @param {previousMessage} newMessages 
      */
-    /*const onSend = (newMessages) => {
-        setMessages(previousMessages => GiftedChat.append(previousMessages, newMessages))
-   } \*/
     const onSend = (newMessages) => {
         addDoc(collection(db, "messages"), newMessages[0])
     }
 
-    const addMessages = async (newMesages) => {
-        const newMessagesRef = await addDoc(collection(db, "messages"), newMessages);
-        if (newMessagesRef.id) {
-            Alert.alert(`The list "${messagesName}" has been added.`);
-        } else {
-            Alert.alert("Unable to add. Please try later");
-        }
-    }
     const renderBubble = (props) => {
         return <Bubble
             {...props}
@@ -54,8 +33,29 @@ const Chat = ({ route, navigation }) => {
         />
     }
 
+    const fetchMessages = async () => {
+        const messagesDocuments = await getDocs(collection(db, "messages"));
+        let newMessages = [];
+        messagesDocuments.forEach(docObject => {
+            newMessages.push({ id: docObject.id, ...docObject.data() })
+        });
+        setMessages(newMessages);
+    }
 
-    // called only once, passing an empty array 
+    useEffect(() => {
+        fetchMessages();
+    }, [`${messages}`]);
+
+    const addMessage = async (newMessage) => {
+        const newMessageRef = await addDoc(collection(db, "messages"), newMessage);
+        if (newMessageRef.id) {
+            setMessages([newMessage, ...messages]);
+            Alert.alert(`The message "${messageName}" has been added.`);
+        } else {
+            Alert.alert("Unable to add. Please try later");
+        }
+    }
+
     useEffect(() => {
         navigation.setOptions({ title: name });
         const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
@@ -75,9 +75,139 @@ const Chat = ({ route, navigation }) => {
         }
     }, []);
 
+    useEffect(() => {
+        const q = query(collection(db, "messages"), where("uid", "==", userID));
+        const unsubMessages = onSnapshot(q, (documentsSnapshot) => {
+            let newMessages = [];
+            documentsSnapshot.forEach(doc => {
+                newMessages.push({ id: doc.id, ...doc.data() })
+            });
+            setMessages(newMessages);
+        });
+
+        // Clean up code
+        return () => {
+            if (unsubMessages) unsubMessages();
+        }
+    }, []);
     // set the state with a static message
     // able to see each element of the UI displayed on screen right away
-    useEffect(() => {
+
+    return (
+        <View style={styles.container}>
+            <FlatList
+                //style={styles.messagesContainer}
+                data={messages}
+                renderItem={({ item }) =>
+                    <Text>{item.name}: {item.items.join(", ")}</Text>} />
+            <View style={styles.messageForm}>
+                <TextInput
+                    style={styles.messageName}
+                    placeholder="message Name"
+                    value={messageName}
+                    onChangeText={setMessageName}
+                />
+                <TextInput
+                    style={styles.item}
+                    placeholder="Item #1"
+                    value={item1}
+                    onChangeText={setItem1}
+                />
+                <TextInput
+                    style={styles.item}
+                    placeholder="Item #2"
+                    value={item2}
+                    onChangeText={setItem2}
+                />
+                <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => {
+                        const newMessage = {
+                            uid: userID,
+                            name: messageName,
+                            items: [item1, item2]
+                        }
+                        addMessage(newMessage);
+                    }}
+                >
+                    <Text style={styles.addButtonText}>Add</Text>
+                </TouchableOpacity>
+            </View>
+            <Text>Welcome in the Messages</Text>
+            <GiftedChat
+                messages={messages}
+                renderBubble={renderBubble}
+                onSend={messages => onSend(messages)}
+                user={{
+                    _id: userID,
+                    name: name
+                }}
+            />
+
+            {Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1
+    },
+    messageItem: {
+        height: 70,
+        justifyContent: "center",
+        paddingHorizontal: 30,
+        borderBottomWidth: 1,
+        borderBottomColor: "#AAA",
+        flex: 1,
+        flexGrow: 1
+    },
+    messageForm: {
+        flexBasis: 275,
+        flex: 0,
+        margin: 15,
+        padding: 15,
+        backgroundColor: "#CCC"
+    },
+    messageName: {
+        height: 50,
+        padding: 15,
+        fontWeight: "600",
+        marginRight: 50,
+        marginBottom: 15,
+        borderColor: "#555",
+        borderWidth: 2
+    },
+    item: {
+        height: 50,
+        padding: 15,
+        marginLeft: 50,
+        marginBottom: 15,
+        borderColor: "#555",
+        borderWidth: 2
+    },
+    addButton: {
+        justifyContent: "center",
+        alignItems: "center",
+        height: 50,
+        backgroundColor: "#000",
+        color: "#FFF"
+    },
+    addButtonText: {
+        color: "#FFF",
+        fontWeight: "600",
+        fontSize: 20
+    },
+});
+export default Chat
+
+
+//{ backgroundColor: color }]
+/**
+ * const onSend = (newMessages) => {
+        setMessages(previousMessages => GiftedMessages.append(previousMessages, newMessages))
+    }
+ * useEffect(() => {
         setMessages([
             {
                 _id: 1,
@@ -97,27 +227,4 @@ const Chat = ({ route, navigation }) => {
             },
         ]);
     }, []);
-
-    return (
-        <View style={[styles.container, { backgroundColor: color }]}>
-            <Text>Welcome in the Chat</Text>
-            <GiftedChat
-                messages={messages}
-                renderBubble={renderBubble}
-                onSend={messages => onSend(messages)}
-                user={{
-                    _id: 1
-                }}
-            />
-            {Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
-        </View>
-    );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    }
-})
-
-export default Chat;
+ */

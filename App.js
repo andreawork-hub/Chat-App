@@ -8,6 +8,8 @@ import Start from './components/Start';
 // import react navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs(["AsyncStorage has been extracted from"]);
 
 
 // Create the navigator
