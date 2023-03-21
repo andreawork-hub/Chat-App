@@ -16,7 +16,7 @@ const Chat = ({ route, db, navigation }) => {
      * @param {previousMessage} newMessages 
      */
     const onSend = (newMessages) => {
-        addDoc(collection(db, "messages"), newMessages[0])
+        addDoc(collection(db, "messages"), newMessages[0]);
     }
 
     const renderBubble = (props) => {
@@ -35,16 +35,22 @@ const Chat = ({ route, db, navigation }) => {
 
     const fetchMessages = async () => {
         const messagesDocuments = await getDocs(collection(db, "messages"));
-        let newMessages = [];
-        messagesDocuments.forEach(docObject => {
-            newMessages.push({ id: docObject.id, ...docObject.data() })
-        });
-        setMessages(newMessages);
+        if (messagesDocuments.exists()) {
+            console.log("data: ", messagesDocuments.data())
+            let newMessages = [];
+            messagesDocuments.data().forEach(docObject => {
+                newMessages.push({ id: docObject.id, ...docObject.data() })
+            });
+            setMessages(newMessages);
+        } else {
+            console.log("something went wrong")
+        }
+
     }
 
     useEffect(() => {
         fetchMessages();
-    }, [`${messages}`]);
+    }, [messages]);
 
     const addMessage = async (newMessage) => {
         const newMessageRef = await addDoc(collection(db, "messages"), newMessage);
@@ -94,12 +100,13 @@ const Chat = ({ route, db, navigation }) => {
     // able to see each element of the UI displayed on screen right away
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: color }]}>
             <FlatList
                 //style={styles.messagesContainer}
                 data={messages}
                 renderItem={({ item }) =>
                     <Text>{item.name}: {item.items.join(", ")}</Text>} />
+            {/* <Text>{item.name}: {item.items.join(", ")}</Text>} /> */}
             <View style={styles.messageForm}>
                 <TextInput
                     style={styles.messageName}
