@@ -1,10 +1,14 @@
 //import gifted Messages library
 import { GiftedChat, Bubble } from "react-native-gifted-chat";
-import { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, FlatList, Alert } from 'react-native';
-import { collection, getDocs, addDoc, onSnapshot, query, where, orderBy } from "firebase/firestore";
+// gives users offline access to their sent/received message
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const Chat = ({ route, db, navigation }) => {
+import { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, FlatList, Alert, LogBox } from 'react-native';
+import { collection, getDocs, addDoc, onSnapshot, query, where, orderBy, doc } from "firebase/firestore";
+
+
+const Chat = ({ route, db, navigation, isConnected }) => {
     const { name, color, userID } = route.params;
     const [messages, setMessages] = useState([]);
     const [messageName, setMessageName] = useState("");
@@ -52,16 +56,8 @@ const Chat = ({ route, db, navigation }) => {
         fetchMessages();
     }, [messages]);
 
-    const addMessage = async (newMessage) => {
-        const newMessageRef = await addDoc(collection(db, "messages"), newMessage);
-        if (newMessageRef.id) {
-            setMessages([newMessage, ...messages]);
-            Alert.alert(`The message "${messageName}" has been added.`);
-        } else {
-            Alert.alert("Unable to add. Please try later");
-        }
-    }
 
+    // works with bubble and gifted chat 
     useEffect(() => {
         navigation.setOptions({ title: name });
         const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
@@ -80,24 +76,72 @@ const Chat = ({ route, db, navigation }) => {
             if (unsubMessages) unsubMessages();
         }
     }, []);
+    // works with the list example 
+    //try-catch function as a safety measure to prevent the app from crashing in case AsyncStorage fails to store the data
+    //JSON.stringify() converts object to string 
 
+    let unsubMessages;
+    // code after refactoring
     useEffect(() => {
-        const q = query(collection(db, "messages"), where("uid", "==", userID));
-        const unsubMessages = onSnapshot(q, (documentsSnapshot) => {
-            let newMessages = [];
-            documentsSnapshot.forEach(doc => {
-                newMessages.push({ id: doc.id, ...doc.data() })
-            });
-            setMessages(newMessages);
-        });
 
+        if (isConnected === true) {
+            // unregister current onSnapshot() listener to avoid registering multiple listeners when
+            // useEffect code is re-executed.
+            if (unsubMessages) unsubMessages();
+            unsubMessages = null;
+
+            const q = query(collection(db, "messages"), where("uid", "==", userID));
+            unsubMessages = onSnapshot(q, (documentsSnapshot) => {
+                let newMessages = [];
+                documentsSnapshot.forEach(doc => {
+                    newMessages.push({ id: doc.id, ...doc.data() })
+                });
+                cacheMessages(newMessages)
+                setMessages(newMessages);
+            });
+        } else loadCachedMessages();
         // Clean up code
         return () => {
             if (unsubMessages) unsubMessages();
         }
-    }, []);
+    }, [isConnected]);
+
+    const cacheMessages = async (messagesToCache) => {
+        try {
+            await AsyncStorage.setItem("messages", JSON.stringify(messagesToCache));
+        } catch (error) {
+            console.log(error.message);
+        };
+    }
+    const loadCachedMessages = async () => {
+        const loadCachedMessages = await AsyncStorage.getItem("messages") || [];
+        setMessages(JSON.parse(cachedMessages));
+    }
+
+    const addMessage = async (newMessage) => {
+        const newMessageRef = await addDoc(collection(db, "messages"), newMessage);
+        if (newMessageRef.id) {
+            setMessages([newMessage, ...messages]);
+            Alert.alert(`The message "${messageName}" has been added.`);
+        } else {
+            Alert.alert("Unable to add. Please try later");
+        }
+    }
+    /** whenever query(collection(db, "shoppinglists"),
+    * where("uid", "==", userID)), is changed 
+    * by an add, remove, or update query, 
+    * the onSnapshot() callback will be called
+    */
+
     // set the state with a static message
     // able to see each element of the UI displayed on screen right away
+
+    /*The basic operations you can carry out with AsyncStorage are the same as for web storage:
+    * gives users offline access to their sent/received message
+    * AsyncStorage.setItem(): sets/stores an item;
+    * AsyncStorage.getItem(): reads an item;
+    * AsyncStorage.removeItem(): deletes an item.
+    */
 
     return (
         <View style={[styles.container, { backgroundColor: color }]}>
@@ -106,40 +150,40 @@ const Chat = ({ route, db, navigation }) => {
                 data={messages}
                 renderItem={({ item }) =>
                     <Text>{item.name}: {item.items.join(", ")}</Text>} />
-            {/* <Text>{item.name}: {item.items.join(", ")}</Text>} /> */}
-            <View style={styles.messageForm}>
-                <TextInput
-                    style={styles.messageName}
-                    placeholder="message Name"
-                    value={messageName}
-                    onChangeText={setMessageName}
-                />
-                <TextInput
-                    style={styles.item}
-                    placeholder="Item #1"
-                    value={item1}
-                    onChangeText={setItem1}
-                />
-                <TextInput
-                    style={styles.item}
-                    placeholder="Item #2"
-                    value={item2}
-                    onChangeText={setItem2}
-                />
-                <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => {
-                        const newMessage = {
-                            uid: userID,
-                            name: messageName,
-                            items: [item1, item2]
-                        }
-                        addMessage(newMessage);
-                    }}
-                >
-                    <Text style={styles.addButtonText}>Add</Text>
-                </TouchableOpacity>
-            </View>
+            {(isConnected === true) ?
+                <View style={styles.messageForm}>
+                    <TextInput
+                        style={styles.messageName}
+                        placeholder="message Name"
+                        value={messageName}
+                        onChangeText={setMessageName}
+                    />
+                    <TextInput
+                        style={styles.item}
+                        placeholder="Item #1"
+                        value={item1}
+                        onChangeText={setItem1}
+                    />
+                    <TextInput
+                        style={styles.item}
+                        placeholder="Item #2"
+                        value={item2}
+                        onChangeText={setItem2}
+                    />
+                    <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => {
+                            const newMessage = {
+                                uid: userID,
+                                name: messageName,
+                                items: [item1, item2]
+                            }
+                            addMessage(newMessage);
+                        }}
+                    >
+                        <Text style={styles.addButtonText}>Add</Text>
+                    </TouchableOpacity>
+                </View> : null}
             <Text>Welcome in the Messages</Text>
             <GiftedChat
                 messages={messages}
