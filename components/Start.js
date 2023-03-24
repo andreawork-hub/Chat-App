@@ -4,7 +4,6 @@ import { getAuth, signInAnonymously } from "firebase/auth";
 //navigation prop is passed to every component included in the Stack.Navigator, and contains a set of methods used to navigate to other screens
 
 
-
 const backgroundColors = {
     black: { backgroundColor: '#090C08' },
     purple: { backgroundColor: '#474056' },
@@ -79,8 +78,9 @@ const Start = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={styles.button}
-                            //onPress={() => navigation.navigate('Chat', { name: name, color: color, })}>
-                            //onPress={() => signInUser('Chat', { name: name, color: color, })}>
+                            accessible={true}
+                            accessibilityLabel='Start Chatting'
+                            accessibilityHint='Click the button to navigate to chat screen'
                             onPress={signInUser}>
                             <Text style={styles.buttonText}>Start Chatting</Text>
                         </TouchableOpacity>
